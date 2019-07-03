@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.cli.common.repl.ReplEvalResult
 import org.jetbrains.kotlin.scripting.repl.ReplInterpreter
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -12,8 +13,15 @@ class REPLMain {
 
         print("> ")
         reader.forEachLine {
-            println(interpreter.eval(it))
-            print("> ")
+            val result = interpreter.eval(it)
+            if (result is ReplEvalResult.Incomplete) {
+                 print("... ")
+            } else {
+                if (result !is ReplEvalResult.UnitResult) {
+                    println(result)
+                }
+                print("> ")
+            }
         }
     }
 }

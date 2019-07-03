@@ -42,7 +42,7 @@ fun newConfiguration(): CompilerConfiguration {
     })
 
     configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File(JVM_RT_PATH)))
-
+    configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File("lib/kotlin-stdlib.jar")))
 
     return configuration
 }
