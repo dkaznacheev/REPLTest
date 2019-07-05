@@ -1,3 +1,5 @@
+package dk.repl
+
 import com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.diagnostics.Diagnostic
 import org.jetbrains.kotlin.scripting.repl.ReplExceptionReporter

@@ -1,3 +1,5 @@
+package dk.repl
+
 import com.intellij.openapi.Disposable
 
 class DisposableMock : Disposable {

@@ -1,3 +1,5 @@
+package dk.repl
+
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -10,11 +12,15 @@ import org.jetbrains.kotlin.utils.PathUtil
 import java.io.File
 
 const val JVM_RT_PATH = "/Library/Java/JavaVirtualMachines/jdk1.8.0_212.jdk/Contents/Home/jre/lib/"
-
+const val LIB_PATH = "/Users/dmitry.kaznacheev/zeppelin/dist/kotlinc/lib/"
 fun prepareConfiguration(): CompilerConfiguration {
     val configuration = newConfiguration()
     loadScriptingPlugin(configuration)
     return configuration
+}
+
+fun pathTo(jar: String): String {
+    return "$LIB_PATH$jar"
 }
 
 fun newConfiguration(): CompilerConfiguration {
@@ -42,23 +48,21 @@ fun newConfiguration(): CompilerConfiguration {
     })
 
     configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File(JVM_RT_PATH)))
-    configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File("lib/kotlin-stdlib.jar")))
+    configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File(
+        pathTo("kotlin-stdlib.jar"))))
 
     return configuration
 }
 
 fun loadScriptingPlugin(configuration: CompilerConfiguration) {
-    val libPath = PathUtil.kotlinPathsForCompiler.libPath
-    val pluginClasspath = with (PathUtil) {
-        listOf(
-            KOTLIN_SCRIPTING_COMPILER_PLUGIN_JAR,
-            KOTLIN_SCRIPTING_COMPILER_IMPL_JAR,
-            KOTLIN_SCRIPTING_COMMON_JAR,
-            KOTLIN_SCRIPTING_JVM_JAR,
-            KOTLIN_JAVA_STDLIB_SRC_JAR,
-            KOTLIN_JAVA_STDLIB_SRC_JAR_OLD
-        ).map { File(libPath, it).path }
-    }
+    val pluginList = listOf(
+        PathUtil.KOTLIN_SCRIPTING_COMPILER_PLUGIN_JAR,
+        PathUtil.KOTLIN_SCRIPTING_COMPILER_IMPL_JAR,
+        PathUtil.KOTLIN_SCRIPTING_COMMON_JAR,
+        PathUtil.KOTLIN_SCRIPTING_JVM_JAR
+    )
+    val pluginClasspath = pluginList.map(::pathTo)
+
     println(pluginClasspath)
     PluginCliParser.loadPluginsSafe(pluginClasspath, null, configuration)
 }
