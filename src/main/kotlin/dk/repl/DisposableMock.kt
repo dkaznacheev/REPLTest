@@ -1,6 +1,6 @@
 package dk.repl
 
-import com.intellij.openapi.Disposable
+import org.jetbrains.kotlin.com.intellij.openapi.Disposable
 
 class DisposableMock : Disposable {
     @Volatile

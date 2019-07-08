@@ -2,7 +2,6 @@ package dk.repl
 
 import org.jetbrains.kotlin.cli.common.repl.ReplEvalResult
 import org.jetbrains.kotlin.scripting.repl.ReplInterpreter
-import org.jetbrains.kotlin.utils.PathUtil
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
