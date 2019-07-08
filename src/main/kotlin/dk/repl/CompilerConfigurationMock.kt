@@ -1,9 +1,7 @@
 package dk.repl
 
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
-import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
-import org.jetbrains.kotlin.cli.common.messages.MessageCollector
+import org.jetbrains.kotlin.cli.common.messages.*
 import org.jetbrains.kotlin.cli.jvm.config.JvmClasspathRoot
 import org.jetbrains.kotlin.cli.jvm.plugins.PluginCliParser
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
@@ -27,25 +25,7 @@ fun newConfiguration(): CompilerConfiguration {
     val configuration = CompilerConfiguration()
     configuration.put(CommonConfigurationKeys.MODULE_NAME, "test")
 
-    configuration.put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, object : MessageCollector {
-        override fun clear() {}
-
-        override fun report(
-            severity: CompilerMessageSeverity, message: String, location: CompilerMessageLocation?
-        ) {
-            if (severity == CompilerMessageSeverity.ERROR) {
-                val prefix = if (location == null)
-                    ""
-                else
-                    "(" + location.path + ":" + location.line + ":" + location.column + ") "
-                throw AssertionError(prefix + message)
-            }
-        }
-
-        override fun hasErrors(): Boolean {
-            return false
-        }
-    })
+    configuration.put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, PrintingMessageCollector(System.out, MessageRenderer.WITHOUT_PATHS, false))
 
     configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File(JVM_RT_PATH)))
     configuration.add(CLIConfigurationKeys.CONTENT_ROOTS, JvmClasspathRoot(File(
@@ -56,10 +36,7 @@ fun newConfiguration(): CompilerConfiguration {
 
 fun loadScriptingPlugin(configuration: CompilerConfiguration) {
     val pluginList = listOf(
-        PathUtil.KOTLIN_SCRIPTING_COMPILER_PLUGIN_JAR,
-        PathUtil.KOTLIN_SCRIPTING_COMPILER_IMPL_JAR,
-        PathUtil.KOTLIN_SCRIPTING_COMMON_JAR,
-        PathUtil.KOTLIN_SCRIPTING_JVM_JAR
+        PathUtil.KOTLIN_SCRIPTING_COMPILER_PLUGIN_JAR
     )
     val pluginClasspath = pluginList.map(::pathTo)
 
