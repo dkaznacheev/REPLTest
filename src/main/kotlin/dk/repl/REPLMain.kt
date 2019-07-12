@@ -5,7 +5,6 @@ import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
 import org.jetbrains.kotlin.scripting.repl.ReplInterpreter
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.io.PrintWriter
 
 class REPLMain {
     private val disposable = Disposer.newDisposable()
@@ -27,12 +26,8 @@ class REPLMain {
         println(eval("Holder.get()"))
 
         print("> ")
-        val writer = PrintWriter(System.out)
         reader.forEachLine {
-            interpreter.dumpClasses(writer)
             val result = eval(it)
-            interpreter.dumpClasses(writer)
-            writer.flush()
             if (result is ReplEvalResult.Incomplete) {
                 print("... ")
             } else {
