@@ -21,7 +21,10 @@ class REPLMain {
     fun start() {
         val reader = BufferedReader(InputStreamReader(System.`in`))
 
+        // attempt to bind Holder
         bind(Holder::class.qualifiedName!!, "Holder")
+        // attempt to access Holder
+        println(eval("Holder.get()"))
 
         print("> ")
         val writer = PrintWriter(System.out)
