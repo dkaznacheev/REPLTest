@@ -19,12 +19,10 @@ class MockHolder: DiagnosticMessageHolder {
 }
 
 class StdinREPLReader: ReplCommandReader {
-    private val reader = BufferedReader(InputStreamReader(System.`in`))
-
     override fun flushHistory() {}
 
     override fun readLine(next: ReplFromTerminal.WhatNextAfterOneLine): String? {
-        return reader.readLine()
+        return null
     }
 }
 
@@ -38,27 +36,21 @@ class StdoutREPLWriter: ReplWriter {
     override fun notifyReadLineStart() {}
 
     override fun outputCommandResult(x: String) {
-        println("RESULT: $x")
     }
 
     override fun outputCompileError(x: String) {
-        println("COMPILE ERROR: $x")
     }
 
     override fun outputRuntimeError(x: String) {
-        println("RUNTIME ERROR: $x")
     }
 
     override fun printlnHelpMessage(x: String) {
-        println("HELP MESSAGE: $x")
     }
 
     override fun printlnWelcomeMessage(x: String) {
-        println("WELCOME MESSAGE: $x")
     }
 
     override fun sendInternalErrorReport(x: String) {
-        println("INTERNAL ERROR REPORT: $x")
     }
 }
 
@@ -69,5 +61,4 @@ class MockReplConfiguration: ReplConfiguration {
     override val executionInterceptor = SnippetExecutionInterceptor.Plain
     override val writer = StdoutREPLWriter()
     override fun createDiagnosticHolder() = MockHolder()
-
 }

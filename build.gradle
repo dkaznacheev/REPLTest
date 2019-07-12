@@ -3,7 +3,7 @@ plugins {
 }
 
 
-group 'ru.dkaznacheev'
+group 'dk.repl'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'application'
