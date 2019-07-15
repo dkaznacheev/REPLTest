@@ -13,17 +13,15 @@ class REPLMain {
 
     fun eval(code: String): ReplEvalResult = interpreter.eval(code)
 
-    fun bind(className: String, alias: String) {
-        eval("import $className as $alias")
+    fun bind(className: String, module: String, alias: String) {
+        eval("import $className.$module as $alias")
     }
 
     fun start() {
         val reader = BufferedReader(InputStreamReader(System.`in`))
 
         // attempt to bind Holder
-        bind(Holder::class.qualifiedName!!, "Holder")
-        // attempt to access Holder
-        println(eval("Holder.get()"))
+        bind(Holder::class.qualifiedName!!, "value", "value")
 
         print("> ")
         reader.forEachLine {
