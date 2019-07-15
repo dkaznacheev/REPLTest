@@ -1,11 +1,6 @@
 package dk.repl
 
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import javax.script.ScriptContext.GLOBAL_SCOPE
 import javax.script.ScriptEngineManager
-import javax.script.SimpleBindings
-import javax.script.SimpleScriptContext
 import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
 import kotlin.script.experimental.api.ScriptEvaluationConfiguration
@@ -13,8 +8,8 @@ import kotlin.script.experimental.api.implicitReceivers
 import kotlin.script.experimental.jsr223.KotlinJsr223DefaultScriptEngineFactory
 import kotlin.script.experimental.jvmhost.jsr223.KotlinJsr223ScriptEngineImpl
 
-
-class ExecutionContext(val sc: String)
+@Suppress("unused")
+class ExecutionContext(val ctx: String)
 
 class REPLInterpreter(
     compilationConfiguration: ScriptCompilationConfiguration,
@@ -32,13 +27,8 @@ class REPLInterpreter(
     }
 
     fun start() {
-        val reader = BufferedReader(InputStreamReader(System.`in`))
-
-        print("> ")
-        reader.forEachLine {
-            eval(it)?.let(::println)
-            print("> ")
-        }
+        println(eval("ctx"))
+        println(eval("1 + 1")) // fails here
     }
 
     companion object {
@@ -50,11 +40,10 @@ class REPLInterpreter(
                 implicitReceivers(listOf(KotlinType(ExecutionContext::class)))
             }
             val evaluationConf = ScriptEvaluationConfiguration(engine.evaluationConfiguration) {
-                implicitReceivers(ExecutionContext("SC!"))
+                implicitReceivers(ExecutionContext("CONTEXT"))
             }
             val repl = REPLInterpreter(compilationConf, evaluationConf)
             repl.start()
         }
     }
-
 }
