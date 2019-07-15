@@ -6,15 +6,19 @@ import javax.script.ScriptContext.GLOBAL_SCOPE
 import javax.script.ScriptEngineManager
 import javax.script.SimpleBindings
 import javax.script.SimpleScriptContext
+import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ScriptCompilationConfiguration
 import kotlin.script.experimental.api.ScriptEvaluationConfiguration
+import kotlin.script.experimental.api.implicitReceivers
 import kotlin.script.experimental.jsr223.KotlinJsr223DefaultScriptEngineFactory
 import kotlin.script.experimental.jvmhost.jsr223.KotlinJsr223ScriptEngineImpl
 
-@ExperimentalStdlibApi
+
+class ExecutionContext(val sc: String)
+
 class REPLInterpreter(
-    val compilationConfiguration: ScriptCompilationConfiguration,
-    val evaluationConfiguration: ScriptEvaluationConfiguration
+    compilationConfiguration: ScriptCompilationConfiguration,
+    evaluationConfiguration: ScriptEvaluationConfiguration
 ) {
     private val engine = KotlinJsr223ScriptEngineImpl(
         KotlinJsr223DefaultScriptEngineFactory(),
@@ -22,18 +26,12 @@ class REPLInterpreter(
         evaluationConfiguration
     )
 
-    val ctx = SimpleScriptContext()
-    val bindings = SimpleBindings()
-
     fun eval(code: String): String? {
-        val res = engine.compile(code, ctx)
-        return res.eval(bindings)?.toString()
+        val res = engine.compile(code)
+        return res.eval()?.toString()
     }
 
     fun start() {
-        bindings.put("a", "b")
-        ctx.setBindings(bindings, GLOBAL_SCOPE)
-
         val reader = BufferedReader(InputStreamReader(System.`in`))
 
         print("> ")
@@ -49,8 +47,11 @@ class REPLInterpreter(
             val engine = ScriptEngineManager().getEngineByExtension("kts") as KotlinJsr223ScriptEngineImpl
 
             val compilationConf = ScriptCompilationConfiguration(engine.compilationConfiguration){
+                implicitReceivers(listOf(KotlinType(ExecutionContext::class)))
             }
-            val evaluationConf = engine.evaluationConfiguration
+            val evaluationConf = ScriptEvaluationConfiguration(engine.evaluationConfiguration) {
+                implicitReceivers(ExecutionContext("SC!"))
+            }
             val repl = REPLInterpreter(compilationConf, evaluationConf)
             repl.start()
         }

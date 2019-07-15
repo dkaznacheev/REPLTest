@@ -7,7 +7,7 @@ group 'dk.repl'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'application'
-mainClassName = 'dk.repl.REPLMain'
+mainClassName = 'dk.repl.REPLInterpreter'
 
 repositories {
     mavenCentral()
