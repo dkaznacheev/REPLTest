@@ -18,9 +18,16 @@ import kotlin.script.experimental.jvmhost.impl.KJvmReplCompilerImpl
 import kotlin.script.experimental.jvmhost.repl.JvmReplCompiler
 import kotlin.script.experimental.jvmhost.repl.JvmReplEvaluator
 
+interface MyReceiverInterface {
+    val ctx: String
+}
+
+open class MyReceiver(val ctxImpl: String = "SC"): MyReceiverInterface {
+    override val ctx = ctxImpl
+}
 
 @KotlinScript(fileExtension = "simplescript.kts")
-abstract class SimpleScript
+open class SimpleScript(sc: MyReceiver): MyReceiverInterface by sc
 
 @Suppress("unused")
 class ExecutionContext(val ctx: String)
@@ -70,25 +77,17 @@ fun evaluateInRepl(
 fun main() {
     val compilationConf = createJvmCompilationConfigurationFromTemplate<SimpleScript> {
         jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
-        implicitReceivers(ExecutionContext::class)
     }
     val evaluationConf = createJvmEvaluationConfigurationFromTemplate<SimpleScript> {
-        implicitReceivers(ExecutionContext("CONTEXT"))
+        constructorArgs(MyReceiver("SC!!"))
     }
 
-    val commands = listOf("1 + 1", "2 + 2").asSequence()
+    val commands = listOf("1 + 1", "ctx").asSequence()
 
     val resultWithDiagnostics = evaluateInRepl(compilationConf,
         evaluationConf,
         commands)
     resultWithDiagnostics.forEachIndexed { index, result ->
-        when (result) {
-            is ResultWithDiagnostics.Failure -> {
-                for (report in result.reports) {
-                    report.exception?.printStackTrace()
-                }
-            }
-            else -> println("$index: success")
-        }
+        println("$index: $result")
     }
 }
