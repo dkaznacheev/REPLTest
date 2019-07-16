@@ -25,7 +25,6 @@ abstract class SimpleScript
 @Suppress("unused")
 class ExecutionContext(val ctx: String)
 
-
 fun evaluateInRepl(
     compilationConfiguration: ScriptCompilationConfiguration,
     evaluationConfiguration: ScriptEvaluationConfiguration,
@@ -64,7 +63,6 @@ fun evaluateInRepl(
                     }
                 }
                 it.asSuccess()
-
             }
     }
 }
@@ -85,7 +83,11 @@ fun main() {
         commands)
     resultWithDiagnostics.forEachIndexed { index, result ->
         when (result) {
-            is ResultWithDiagnostics.Failure -> println("$index: ${result.reports}")
+            is ResultWithDiagnostics.Failure -> {
+                for (report in result.reports) {
+                    report.exception?.printStackTrace()
+                }
+            }
             else -> println("$index: success")
         }
     }
