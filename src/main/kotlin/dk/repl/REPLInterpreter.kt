@@ -1,75 +1,92 @@
 package dk.repl
 
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.cli.common.repl.AggregatedReplStageState
+import org.jetbrains.kotlin.cli.common.repl.BasicReplStageHistory
 import org.jetbrains.kotlin.cli.common.repl.ReplCodeLine
 import org.jetbrains.kotlin.cli.common.repl.ReplCompileResult
+import org.jetbrains.kotlin.descriptors.ScriptDescriptor
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.script.experimental.annotations.KotlinScript
 import kotlin.script.experimental.api.*
-import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
-import kotlin.script.experimental.jvm.jvm
+import kotlin.script.experimental.host.toScriptSource
+import kotlin.script.experimental.jvm.*
 import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
 import kotlin.script.experimental.jvmhost.createJvmEvaluationConfigurationFromTemplate
+import kotlin.script.experimental.jvmhost.impl.KJvmReplCompilerImpl
 import kotlin.script.experimental.jvmhost.repl.JvmReplCompiler
 import kotlin.script.experimental.jvmhost.repl.JvmReplEvaluator
 
 
-class ImplicitReceiverConfiguration : ScriptCompilationConfiguration(
-    {
-        jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
-        implicitReceivers(ExecutionContext::class)
-    }
-)
-
-@KotlinScript(fileExtension = "simplescript.kts", compilationConfiguration = ImplicitReceiverConfiguration::class)
-abstract class SimpleScriptWithReceiver
+@KotlinScript(fileExtension = "simplescript.kts")
+abstract class SimpleScript
 
 @Suppress("unused")
 class ExecutionContext(val ctx: String)
 
-class REPLInterpreter(
+
+fun evaluateInRepl(
     compilationConfiguration: ScriptCompilationConfiguration,
-    evaluationConfiguration: ScriptEvaluationConfiguration
-) {
-    private val compiler = JvmReplCompiler(compilationConfiguration)
-    private val evaluator = JvmReplEvaluator(evaluationConfiguration)
+    evaluationConfiguration: ScriptEvaluationConfiguration,
+    snippets: Sequence<String>
+): Sequence<ResultWithDiagnostics<EvaluationResult>> {
+    val replCompilerProxy =
+        KJvmReplCompilerImpl(defaultJvmScriptingHostConfiguration)
+    val compilationState = replCompilerProxy.createReplCompilationState(compilationConfiguration)
+    val compilationHistory = BasicReplStageHistory<ScriptDescriptor>()
+    val replEvaluator = BasicJvmScriptEvaluator()
+    var currentEvalConfig = evaluationConfiguration
+    return snippets.mapIndexed { snippetNo, snippetText ->
+        val snippetSource = snippetText.toScriptSource("Line_$snippetNo.simplescript.kts")
+        val snippetId = ReplSnippetIdImpl(snippetNo, 0, snippetSource)
+        replCompilerProxy.compileReplSnippet(compilationState, snippetSource, snippetId, compilationHistory)
+            .onSuccess {
+                runBlocking {
+                    replEvaluator(it, currentEvalConfig)
+                }
+            }
+            .onSuccess {
+                val v: ResultValue = it.returnValue
 
-    private val stateLock = ReentrantReadWriteLock()
-    private val state = AggregatedReplStageState(compiler.createState(stateLock), evaluator.createState(stateLock), stateLock)
-    private val counter = AtomicInteger(0)
+                val scriptInstance = when(v) {
+                    is ResultValue.Value -> v.scriptInstance
+                    is ResultValue.UnitValue -> v.scriptInstance
+                    else -> null
+                }
 
-    fun eval(code: String): String? {
-        val compileResult = compiler.compile(state, ReplCodeLine(counter.getAndIncrement(), 0, code))
-        return when (compileResult) {
-            is ReplCompileResult.CompiledClasses -> {
-                evaluator.eval(state, compileResult).toString()
+                scriptInstance?.let { snippetInstance ->
+                    currentEvalConfig = ScriptEvaluationConfiguration(currentEvalConfig) {
+                        previousSnippets.append(snippetInstance)
+                        jvm {
+                            baseClassLoader(snippetInstance::class.java.classLoader)
+                        }
+                    }
+                }
+                it.asSuccess()
+
             }
-            is ReplCompileResult.Incomplete -> {
-                "error: incomplete"
-            }
-            is ReplCompileResult.Error -> {
-                "${compileResult.message}\nlocation: ${compileResult.location}"
-            }
-        }
+    }
+}
+
+fun main() {
+    val compilationConf = createJvmCompilationConfigurationFromTemplate<SimpleScript> {
+        jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
+        implicitReceivers(ExecutionContext::class)
+    }
+    val evaluationConf = createJvmEvaluationConfigurationFromTemplate<SimpleScript> {
+        implicitReceivers(ExecutionContext("CONTEXT"))
     }
 
-    fun start() {
-        println(eval("ctx"))
-        println(eval("1 + 1"))
-    }
+    val commands = listOf("1 + 1", "2 + 2").asSequence()
 
-    companion object {
-        @JvmStatic
-        fun main(args:Array<String>) {
-
-            val compilationConf = createJvmCompilationConfigurationFromTemplate<SimpleScriptWithReceiver>()
-            val evaluationConf = createJvmEvaluationConfigurationFromTemplate<SimpleScriptWithReceiver> {
-                implicitReceivers(ExecutionContext("CONTEXT"))
-            }
-
-            val repl = REPLInterpreter(compilationConf, evaluationConf)
-            repl.start()
+    val resultWithDiagnostics = evaluateInRepl(compilationConf,
+        evaluationConf,
+        commands)
+    resultWithDiagnostics.forEachIndexed { index, result ->
+        when (result) {
+            is ResultWithDiagnostics.Failure -> println("$index: ${result.reports}")
+            else -> println("$index: success")
         }
     }
 }
