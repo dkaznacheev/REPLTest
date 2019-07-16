@@ -7,8 +7,11 @@ import kotlin.script.experimental.jvm.BasicJvmScriptEvaluator;
 import kotlin.script.experimental.jvmhost.impl.JvmHostUtilKt;
 import kotlin.script.experimental.jvmhost.repl.JvmReplCompiler;
 import kotlin.script.experimental.jvmhost.repl.JvmReplEvaluator;
-import org.jetbrains.kotlin.cli.common.repl.*;
+import org.jetbrains.kotlin.cli.common.repl.AggregatedReplStageState;
+import org.jetbrains.kotlin.cli.common.repl.ReplCodeLine;
+import org.jetbrains.kotlin.cli.common.repl.ReplCompileResult;
 import org.jetbrains.kotlin.cli.common.repl.ReplCompileResult.CompiledClasses;
+import org.jetbrains.kotlin.cli.common.repl.ReplEvalResult;
 import org.jetbrains.kotlin.scripting.compiler.plugin.impl.KJvmReplCompilerImpl;
 
 import java.util.Scanner;
@@ -73,7 +76,7 @@ public class JREPLInterpreter {
     }
 
     public static void main(String[] args) {
-
+        // how do I get createJvmCompilationConfigurationFromTemplate?
     }
 
 }
