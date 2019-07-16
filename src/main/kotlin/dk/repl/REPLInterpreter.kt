@@ -1,12 +1,29 @@
 package dk.repl
 
-import javax.script.ScriptEngineManager
-import kotlin.script.experimental.api.KotlinType
-import kotlin.script.experimental.api.ScriptCompilationConfiguration
-import kotlin.script.experimental.api.ScriptEvaluationConfiguration
-import kotlin.script.experimental.api.implicitReceivers
-import kotlin.script.experimental.jsr223.KotlinJsr223DefaultScriptEngineFactory
-import kotlin.script.experimental.jvmhost.jsr223.KotlinJsr223ScriptEngineImpl
+import org.jetbrains.kotlin.cli.common.repl.AggregatedReplStageState
+import org.jetbrains.kotlin.cli.common.repl.ReplCodeLine
+import org.jetbrains.kotlin.cli.common.repl.ReplCompileResult
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.script.experimental.annotations.KotlinScript
+import kotlin.script.experimental.api.*
+import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
+import kotlin.script.experimental.jvm.jvm
+import kotlin.script.experimental.jvmhost.createJvmCompilationConfigurationFromTemplate
+import kotlin.script.experimental.jvmhost.createJvmEvaluationConfigurationFromTemplate
+import kotlin.script.experimental.jvmhost.repl.JvmReplCompiler
+import kotlin.script.experimental.jvmhost.repl.JvmReplEvaluator
+
+
+class ImplicitReceiverConfiguration : ScriptCompilationConfiguration(
+    {
+        jvm { dependenciesFromCurrentContext(wholeClasspath = true) }
+        implicitReceivers(ExecutionContext::class)
+    }
+)
+
+@KotlinScript(fileExtension = "simplescript.kts", compilationConfiguration = ImplicitReceiverConfiguration::class)
+abstract class SimpleScriptWithReceiver
 
 @Suppress("unused")
 class ExecutionContext(val ctx: String)
@@ -15,33 +32,42 @@ class REPLInterpreter(
     compilationConfiguration: ScriptCompilationConfiguration,
     evaluationConfiguration: ScriptEvaluationConfiguration
 ) {
-    private val engine = KotlinJsr223ScriptEngineImpl(
-        KotlinJsr223DefaultScriptEngineFactory(),
-        compilationConfiguration,
-        evaluationConfiguration
-    )
+    private val compiler = JvmReplCompiler(compilationConfiguration)
+    private val evaluator = JvmReplEvaluator(evaluationConfiguration)
+
+    private val stateLock = ReentrantReadWriteLock()
+    private val state = AggregatedReplStageState(compiler.createState(stateLock), evaluator.createState(stateLock), stateLock)
+    private val counter = AtomicInteger(0)
 
     fun eval(code: String): String? {
-        val res = engine.compile(code)
-        return res.eval()?.toString()
+        val compileResult = compiler.compile(state, ReplCodeLine(counter.getAndIncrement(), 0, code))
+        return when (compileResult) {
+            is ReplCompileResult.CompiledClasses -> {
+                evaluator.eval(state, compileResult).toString()
+            }
+            is ReplCompileResult.Incomplete -> {
+                "error: incomplete"
+            }
+            is ReplCompileResult.Error -> {
+                "${compileResult.message}\nlocation: ${compileResult.location}"
+            }
+        }
     }
 
     fun start() {
         println(eval("ctx"))
-        println(eval("1 + 1")) // fails here
+        println(eval("1 + 1"))
     }
 
     companion object {
         @JvmStatic
         fun main(args:Array<String>) {
-            val engine = ScriptEngineManager().getEngineByExtension("kts") as KotlinJsr223ScriptEngineImpl
 
-            val compilationConf = ScriptCompilationConfiguration(engine.compilationConfiguration){
-                implicitReceivers(listOf(KotlinType(ExecutionContext::class)))
-            }
-            val evaluationConf = ScriptEvaluationConfiguration(engine.evaluationConfiguration) {
+            val compilationConf = createJvmCompilationConfigurationFromTemplate<SimpleScriptWithReceiver>()
+            val evaluationConf = createJvmEvaluationConfigurationFromTemplate<SimpleScriptWithReceiver> {
                 implicitReceivers(ExecutionContext("CONTEXT"))
             }
+
             val repl = REPLInterpreter(compilationConf, evaluationConf)
             repl.start()
         }
